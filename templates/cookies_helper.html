@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>YouTube Authentication Helper</h2>
+    </div>
+    <div class="card-body">
+        <div class="info-section">
+            <h3>Why Authentication is Needed</h3>
+            <p>YouTube has anti-bot measures that require authentication for downloading some videos and playlists. You need to provide your YouTube cookies to bypass these restrictions.</p>
+            
+            <div class="options-container">
+                <h3>Choose an Authentication Method</h3>
+                
+                <div class="auth-option">
+                    <h4><i class="fas fa-browser"></i> Use Browser Cookies (Recommended)</h4>
+                    <p>We can extract cookies directly from your browser where you're already logged into YouTube.</p>
+                    <a href="{{ url_for('browser_profiles') }}" class="btn btn-primary">Use Browser Cookies</a>
+                </div>
+                
+                <div class="auth-option">
+                    <h4><i class="fas fa-file-export"></i> Export Cookies Manually</h4>
+                    <p>Export cookies from your browser using an extension, then upload the file.</p>
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h5>Install a Cookie Exporter Extension</h5>
+                                <p>Install one of these extensions in your browser:</p>
+                                <ul>
+                                    <li><a href="https://chrome.google.com/webstore/detail/get-cookiestxt/bgaddhkoddajcdgocldbbfleckgcbcid" target="_blank">Get cookies.txt (Chrome/Edge)</a></li>
+                                    <li><a href="https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/" target="_blank">Cookies.txt (Firefox)</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h5>Log in to YouTube</h5>
+                                <p>Make sure you're logged into <a href="https://www.youtube.com" target="_blank">YouTube</a> in your browser.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h5>Export Cookies</h5>
+                                <p>Click on the extension icon while on YouTube and export the cookies file.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h5>Upload the Cookies File</h5>
+                                <p>Return to the main page and upload the cookies file when downloading a playlist.</p>
+                                <a href="{{ url_for('index') }}" class="btn btn-secondary">Go to Download Page</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

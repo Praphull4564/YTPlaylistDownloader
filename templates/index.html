@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Download YouTube Playlist</h2>
+    </div>
+    <div class="card-body">
+        {% if error %}
+        <div class="alert alert-error">
+            <i class="fas fa-exclamation-circle"></i> {{ error }}
+        </div>
+        {% endif %}
+        
+        <form action="{{ url_for('download') }}" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="playlist_url">YouTube Playlist URL:</label>
+                <input type="url" id="playlist_url" name="playlist_url" placeholder="https://youtube.com/playlist?list=..." required>
+            </div>
+            
+            <div class="form-group">
+                <label>YouTube Authentication (Required):</label>
+                <div class="auth-options">
+                    <div class="auth-option">
+                        <label for="browser">Use cookies from your browser:</label>
+                        <select id="browser" name="browser" class="form-control">
+                            <option value="">Select your browser</option>
+                            <option value="chrome">Chrome</option>
+                            <option value="firefox">Firefox</option>
+                            <option value="edge">Microsoft Edge</option>
+                            <option value="safari">Safari</option>
+                            <option value="opera">Opera</option>
+                            <option value="brave">Brave</option>
+                        </select>
+                        <div class="help-text">
+                            <i class="fas fa-info-circle"></i> Make sure you are logged into YouTube in the selected browser
+                        </div>
+                    </div>
+                    
+                    <div class="auth-divider">OR</div>
+                    
+                    <div class="auth-option">
+                        <label for="cookie_file">Upload cookies.txt file:</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="cookie_file" name="cookie_file">
+                            <div class="file-input-label">
+                                <i class="fas fa-file-upload"></i> Choose File
+                            </div>
+                            <span id="file-name">No file chosen</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-download"></i> Get Download Links
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="youtube-auth-help">
+    <div class="card">
+        <div class="card-header">
+            <h3>Why is YouTube Authentication Required?</h3>
+        </div>
+        <div class="card-body">
+            <p>YouTube now requires users to be logged in to download most playlists to prevent automated scraping. This application needs to use your YouTube authentication cookies to download videos.</p>
+            
+            <div class="help-steps">
+                <div class="help-step">
+                    <i class="fas fa-browser"></i>
+                    <h4>Option 1: Browser Cookies</h4>
+                    <p>Select your browser from the dropdown above. Make sure you're logged into YouTube in that browser.</p>
+                </div>
+                
+                <div class="help-step">
+                    <i class="fas fa-file-alt"></i>
+                    <h4>Option 2: Upload cookies.txt</h4>
+                    <p>Use a browser extension like "Get cookies.txt" to export your YouTube cookies and upload the file.</p>
+                </div>
+            </div>
+            
+            <div class="note">
+                <i class="fas fa-shield-alt"></i>
+                <p><strong>Privacy Note:</strong> Your login credentials stay on your computer. This application only accesses YouTube using your existing login session.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="features">
+    <div class="feature">
+        <i class="fas fa-bolt"></i>
+        <h3>Fast Downloads</h3>
+        <p>Download videos directly to your device</p>
+    </div>
+    <div class="feature">
+        <i class="fas fa-lock"></i>
+        <h3>Secure</h3>
+        <p>Your data stays on your computer</p>
+    </div>
+    <div class="feature">
+        <i class="fas fa-sliders-h"></i>
+        <h3>Quality Options</h3>
+        <p>Choose your preferred video quality</p>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h3>How Direct Download Works</h3>
+    </div>
+    <div class="card-body">
+        <div class="steps-container">
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Enter Playlist URL</h4>
+                    <p>Paste the YouTube playlist URL and provide authentication method.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>Process Playlist</h4>
+                    <p>The application will process the playlist and find available download options.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h4>Download Videos</h4>
+                    <p>Click on any video to download it directly to your device. No server-side storage!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Display selected filename
+    document.getElementById('cookie_file').addEventListener('change', function(e) {
+        const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
+        document.getElementById('file-name').textContent = fileName;
+    });
+</script>
+{% endblock %}

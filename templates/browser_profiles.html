@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Choose Browser Profile</h2>
+    </div>
+    <div class="card-body">
+        <div class="info-section">
+            <h3>Select Your Browser</h3>
+            <p>Choose the browser where you're logged into YouTube:</p>
+            
+            <form action="{{ url_for('download') }}" method="post" enctype="multipart/form-data" id="browser-form">
+                <input type="hidden" name="playlist_url" id="playlist_url">
+                
+                <div class="browser-options">
+                    {% for browser in browsers %}
+                    <div class="browser-option {% if not browser.exists %}disabled{% endif %}">
+                        <input type="radio" name="browser_name" id="browser-{{ browser.name|lower }}" 
+                               value="{{ browser.name|lower }}" {% if not browser.exists %}disabled{% endif %}>
+                        <label for="browser-{{ browser.name|lower }}" class="browser-label">
+                            <div class="browser-icon">
+                                <i class="fab fa-{{ browser.name|lower }}"></i>
+                            </div>
+                            <div class="browser-info">
+                                <h4>{{ browser.name }}</h4>
+                                {% if browser.exists %}
+                                <p class="status-available">Available</p>
+                                {% else %}
+                                <p class="status-unavailable">Not found</p>
+                                {% endif %}
+                            </div>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div id="profile-selection" style="display: none;" class="profile-section">
+                    <h3>Select Profile</h3>
+                    <p>Choose which profile to use for authentication:</p>
+                    
+                    <div class="profile-options" id="chrome-profiles" style="display: none;">
+                        <div class="profile-option">
+                            <input type="radio" name="browser_profile" id="profile-default" value="Default" checked>
+                            <label for="profile-default">Default</label>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-options" id="firefox-profiles" style="display: none;">
+                        <div class="profile-option">
+                            <input type="radio" name="browser_profile" id="profile-default-firefox" value="default" checked>
+                            <label for="profile-default-firefox">Default</label>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-options" id="edge-profiles" style="display: none;">
+                        <div class="profile-option">
+                            <input type="radio" name="browser_profile" id="profile-default-edge" value="Default" checked>
+                            <label for="profile-default-edge">Default</label>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-options" id="brave-profiles" style="display: none;">
+                        <div class="profile-option">
+                            <input type="radio" name="browser_profile" id="profile-default-brave" value="Default" checked>
+                            <label for="profile-default-brave">Default</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="playlist_url_input">YouTube Playlist URL:</label>
+                    <input type="url" id="playlist_url_input" placeholder="https://youtube.com/playlist?list=..." required>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="continue-btn">
+                        <i class="fas fa-download"></i> Download with Browser Authentication
+                    </button>
+                </div>
+            </form>
+            
+            <div class="back-link">
+                <a href="{{ url_for('index') }}"><i class="fas fa-arrow-left"></i> Go Back to Main Page</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Show profile selection when browser is selected
+    const browserRadios = document.querySelectorAll('input[name="browser_name"]');
+    const profileSelection = document.getElementById('profile-selection');
+    const chromeProfiles = document.getElementById('chrome-profiles');
+    const firefoxProfiles = document.getElementById('firefox-profiles');
+    const edgeProfiles = document.getElementById('edge-profiles');
+    const braveProfiles = document.getElementById('brave-profiles');
+    
+    browserRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            profileSelection.style.display = 'block';
+            
+            // Hide all profile sections
+            chromeProfiles.style.display = 'none';
+            firefoxProfiles.style.display = 'none';
+            edgeProfiles.style.display = 'none';
+            braveProfiles.style.display = 'none';
+            
+            // Show relevant profile section
+            if (this.value === 'chrome') {
+                chromeProfiles.style.display = 'block';
+            } else if (this.value === 'firefox') {
+                firefoxProfiles.style.display = 'block';
+            } else if (this.value === 'edge') {
+                edgeProfiles.style.display = 'block';
+            } else if (this.value === 'brave') {
+                braveProfiles.style.display = 'block';
+            }
+        });
+    });
+    
+    // Form submission
+    document.getElementById('browser-form').addEventListener('submit', function(e) {
+        const playlistUrlInput = document.getElementById('playlist_url_input');
+        const playlistUrlHidden = document.getElementById('playlist_url');
+        
+        if (!playlistUrlInput.value) {
+            e.preventDefault();
+            alert('Please enter a YouTube playlist URL');
+            return false;
+        }
+        
+        playlistUrlHidden.value = playlistUrlInput.value;
+    });
+</script>
+{% endblock %}
+
+# Update the index.html file to add a link to the cookie helper
+# Add this below the form in the index.html file:
+
+<div class="auth-help">
+    <p><i class="fas fa-info-circle"></i> Having trouble with "Sign in to confirm you're not a bot" errors?</p>
+    <a href="{{ url_for('cookie_helper') }}" class="btn btn-secondary btn-sm">
+        <i class="fas fa-key"></i> Authentication Helper
+    </a>
+</div>

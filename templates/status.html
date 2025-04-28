@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card" id="status-card">
+    <div class="card-header">
+        <h2>Download Status</h2>
+    </div>
+    <div class="card-body">
+        <div class="status-container">
+            <div class="status-info">
+                <h3 id="status-text">Initializing...</h3>
+                <div class="progress-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <p id="progress-text">0%</p>
+                <p id="current-file"></p>
+            </div>
+            
+            <div class="download-info">
+                <div id="download-count" class="download-stat">
+                    <i class="fas fa-video"></i>
+                    <span>0</span> videos found
+                </div>
+                <div id="download-available" class="download-stat">
+                    <i class="fas fa-cloud-download-alt"></i>
+                    <span>0</span> ready to download
+                </div>
+            </div>
+            
+            <div id="error-message" class="alert alert-error" style="display: none;">
+                <i class="fas fa-exclamation-circle"></i> <span></span>
+            </div>
+            
+            <div id="download-ready" class="download-complete" style="display: none;">
+                <i class="fas fa-check"></i>
+                <h3>Videos Ready for Download</h3>
+                <p>You can download individual videos or the entire playlist at once.</p>
+                <div class="download-actions">
+                    <a href="{{ url_for('direct_download_all', session_id=session_id) }}" class="btn btn-success" id="download-all-direct-btn">
+                        <i class="fas fa-download"></i> Download All Videos (ZIP)
+                    </a>
+                    <a href="{{ url_for('download_all', session_id=session_id) }}" class="btn btn-primary" id="download-all-btn">
+                        <i class="fas fa-file-download"></i> Download All (Script)
+                    </a>
+                    <button class="btn btn-info" id="download-all-videos-btn">
+                        <i class="fas fa-play-circle"></i> Download All Videos Directly
+                    </button>
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                        <i class="fas fa-home"></i> Back to Home
+                    </a>
+                </div>
+                <div class="download-all-info" style="margin-top: 15px; font-size: 0.9em; color: #666;">
+                    <p><i class="fas fa-info-circle"></i> "Download All Videos (ZIP)" downloads all videos in a single ZIP file.</p>
+                    <p><i class="fas fa-info-circle"></i> "Download All (Script)" creates a script that will download all videos.</p>
+                    <p><i class="fas fa-info-circle"></i> "Download All Videos Directly" will download each video one by one automatically.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="video-list-container">
+            <h3>Available Videos</h3>
+            <div class="video-grid-controls">
+                <button class="btn btn-secondary btn-sm" id="select-all-btn">
+                    <i class="fas fa-check-square"></i> Select All
+                </button>
+                <button class="btn btn-primary btn-sm" id="download-selected-btn" disabled>
+                    <i class="fas fa-download"></i> Download Selected
+                </button>
+            </div>
+            <div class="video-grid" id="video-grid">
+                <!-- Videos will be added here dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const sessionId = "{{ session_id }}";
+    let downloadReady = false;
+    let selectedVideos = [];
+    
+    function updateStatus() {
+        if (downloadReady) return;
+        
+        fetch(`/api/status/${sessionId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Update status text
+                const statusElement = document.getElementById('status-text');
+                const statusText = getStatusText(data.status);
+                statusElement.textContent = statusText;
+                
+                // Update progress
+                const progress = Math.round(data.progress);
+                document.getElementById('progress-bar').style.width = `${progress}%`;
+                document.getElementById('progress-text').textContent = `${progress}%`;
+                
+                // Update current file
+                if (data.current_video) {
+                    const filename = data.current_video.split('/').pop();
+                    document.getElementById('current-file').textContent = `Processing: ${filename}`;
+                    
+                    // Update individual video progress if downloading
+                    const videoId = data.current_video_id;
+                    if (videoId) {
+                        const progressElement = document.getElementById(`progress-${videoId}`);
+                        if (progressElement) {
+                            progressElement.style.display = 'block';
+                            const progressFill = progressElement.querySelector('.progress-fill');
+                            const progressText = progressElement.querySelector('.progress-text');
+                            progressFill.style.width = `${progress}%`;
+                            progressText.textContent = `${progress}%`;
+                        }
+                    }
+                }
+                
+                // Update video counts
+                if (data.total_videos) {
+                    document.getElementById('download-count').innerHTML = 
+                        `<i class="fas fa-video"></i> <span>${data.total_videos}</span> videos found`;
+                }
+                
+                if (data.videos) {
+                    document.getElementById('download-available').innerHTML = 
+                        `<i class="fas fa-cloud-download-alt"></i> <span>${data.videos.length}</span> ready to download`;
+                    
+                    // Update video grid
+                    updateVideoGrid(data.videos);
+                }
+                
+                // Check for completion
+                if (data.completed || data.status === 'ready') {
+                    downloadReady = true;
+                    document.getElementById('download-ready').style.display = 'block';
+                }
+                
+                // Check for errors
+                if (data.error) {
+                    const errorElement = document.getElementById('error-message');
+                    errorElement.querySelector('span').textContent = data.error;
+                    errorElement.style.display = 'block';
+                }
+                
+                // Continue polling if not complete
+                if (!data.completed && !data.error) {
+                    setTimeout(updateStatus, 1000);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching status:', error);
+                setTimeout(updateStatus, 5000); // Retry after 5 seconds
+            });
+    }
+    
+    function getStatusText(status) {
+        const statusTexts = {
+            'starting': 'Initializing...',
+            'getting_cookies': 'Getting browser cookies...',
+            'getting_info': 'Getting playlist information...',
+            'downloading': 'Processing videos...',
+            'processing': 'Processing...',
+            'ready': 'Videos ready for download!',
+            'complete': 'Processing complete!',
+            'error': 'Error occurred!'
+        };
+        
+        return statusTexts[status] || 'Processing...';
+    }
+    
+    function updateVideoGrid(videos) {
+        const videoGrid = document.getElementById('video-grid');
+        
+        // Clear existing list if we need to rebuild
+        videoGrid.innerHTML = '';
+        
+        // Add videos to grid
+        videos.forEach(video => {
+            const videoCard = document.createElement('div');
+            videoCard.className = 'video-card';
+            videoCard.dataset.videoId = video.id;
+            
+            // Find best format (highest resolution with video and audio)
+            const bestFormat = getBestFormat(video.formats);
+            
+            let thumbnailUrl = video.thumbnail || 'static/img/video-placeholder.jpg';
+            
+            // Create video card HTML
+            videoCard.innerHTML = `
+                <div class="video-select">
+                    <input type="checkbox" class="video-checkbox" data-video-id="${video.id}" data-format-id="${bestFormat.format_id}">
+                </div>
+                <div class="video-thumbnail">
+                    <img src="${thumbnailUrl}" alt="${video.title}" onerror="this.src='static/img/video-placeholder.jpg'">
+                </div>
+                <div class="video-info">
+                    <h4 class="video-title">${video.title}</h4>
+                    <div class="video-details">
+                        <span>${formatDuration(video.duration)}</span>
+                    </div>
+                    <div class="video-actions">
+                        <a href="/download-video/${sessionId}/${video.id}/${bestFormat.format_id}" 
+                           class="btn btn-primary btn-sm download-btn" download>
+                            <i class="fas fa-download"></i> Download
+                        </a>
+                        <button class="btn btn-secondary btn-sm format-btn" data-video-id="${video.id}">
+                            <i class="fas fa-cog"></i> Quality
+                        </button>
+                        <div class="download-progress" id="progress-${video.id}" style="display: none;">
+                            <div class="progress-bar">
+                                <div class="progress-fill"></div>
+                            </div>
+                            <span class="progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="format-options" id="formats-${video.id}" style="display: none;">
+                    <div class="format-list">
+                        ${generateFormatOptions(video.formats, video.id, sessionId, video.title)}
+                    </div>
+                </div>
+            `;
+            
+            videoGrid.appendChild(videoCard);
+        });
+        
+        // Add event listeners for format buttons
+        document.querySelectorAll('.format-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const videoId = this.dataset.videoId;
+                const formatOptions = document.getElementById(`formats-${videoId}`);
+                formatOptions.style.display = formatOptions.style.display === 'none' ? 'block' : 'none';
+            });
+        });
+        
+        // Add event listeners for checkboxes
+        document.querySelectorAll('.video-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const videoId = this.dataset.videoId;
+                const formatId = this.dataset.formatId;
+                
+                if (this.checked) {
+                    selectedVideos.push({videoId, formatId});
+                } else {
+                    selectedVideos = selectedVideos.filter(item => item.videoId !== videoId);
+                }
+                
+                // Update download selected button
+                const downloadSelectedBtn = document.getElementById('download-selected-btn');
+                downloadSelectedBtn.disabled = selectedVideos.length === 0;
+            });
+        });
+        
+        // Add event listener for select all button
+        document.getElementById('select-all-btn').addEventListener('click', function() {
+            const checkboxes = document.querySelectorAll('.video-checkbox');
+            const allChecked = selectedVideos.length === checkboxes.length;
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = !allChecked;
+                
+                // Trigger change event
+                const event = new Event('change');
+                checkbox.dispatchEvent(event);
+            });
+            
+            // Update button text
+            this.innerHTML = allChecked ? 
+                '<i class="fas fa-check-square"></i> Select All' : 
+                '<i class="fas fa-square"></i> Unselect All';
+        });
+        
+        // Add event listener for download selected button
+        document.getElementById('download-selected-btn').addEventListener('click', function() {
+            if (selectedVideos.length === 0) return;
+            
+            // Create a ZIP download for selected videos
+            const selectedIds = selectedVideos.map(v => v.videoId).join(',');
+            window.location.href = `/direct-download-all/${sessionId}?selected=${selectedIds}`;
+        });
+    }
+    
+    function getBestFormat(formats) {
+        // Sort by resolution or filesize if available
+        const sortedFormats = [...formats].sort((a, b) => {
+            // If we have filesize info, use that
+            if (a.filesize && b.filesize) {
+                return b.filesize - a.filesize;
+            }
+            
+            // Try to parse height from resolution
+            const aHeight = parseInt(a.resolution.split('x')[1]) || 0;
+            const bHeight = parseInt(b.resolution.split('x')[1]) || 0;
+            
+            return bHeight - aHeight;
+        });
+        
+        return sortedFormats[0] || { format_id: 'best', ext: 'mp4' };
+    }
+    
+    function generateFormatOptions(formats, videoId, sessionId, videoTitle) {
+        return formats.map(format => {
+            let quality = 'Unknown';
+            const height = parseInt(format.resolution.split('x')[1]) || 0;
+            
+            if (height >= 720) {
+                quality = `HD (${format.resolution})`;
+            } else if (height >= 480) {
+                quality = `SD (${format.resolution})`;
+            } else {
+                quality = `Low (${format.resolution})`;
+            }
+            
+            const size = format.filesize ? `(${formatSize(format.filesize)})` : '';
+            
+            return `
+                <a href="/download-video/${sessionId}/${videoId}/${format.format_id}" 
+                   class="format-option" download>
+                    <span class="format-quality">${quality}</span>
+                    <span class="format-size">${size}</span>
+                    <i class="fas fa-download"></i>
+                </a>
+            `;
+        }).join('');
+    }
+    
+    function formatDuration(seconds) {
+        if (!seconds) return 'Unknown duration';
+        
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+    
+    function formatSize(bytes) {
+        if (!bytes) return 'Unknown size';
+        if (bytes < 1024) return bytes + ' B';
+        else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+        else return (bytes / 1073741824).toFixed(1) + ' GB';
+    }
+    
+    // Add event listeners for download buttons
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.download-btn')) {
+            const videoId = e.target.closest('.video-card').dataset.videoId;
+            const progressElement = document.getElementById(`progress-${videoId}`);
+            if (progressElement) {
+                progressElement.style.display = 'block';
+            }
+        }
+    });
+    
+    // Start status updates when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        updateStatus();
+    });
+
+    // Add this new function to handle direct downloads
+    function downloadAllVideosDirectly() {
+        const videos = document.querySelectorAll('.video-card');
+        let currentIndex = 0;
+        
+        function downloadNext() {
+            if (currentIndex < videos.length) {
+                const videoCard = videos[currentIndex];
+                const downloadBtn = videoCard.querySelector('.download-btn');
+                if (downloadBtn) {
+                    // Show progress for current video
+                    const progressElement = document.getElementById(`progress-${videoCard.dataset.videoId}`);
+                    if (progressElement) {
+                        progressElement.style.display = 'block';
+                    }
+                    
+                    // Trigger download
+                    downloadBtn.click();
+                    
+                    // Wait for a short delay before downloading next video
+                    setTimeout(() => {
+                        currentIndex++;
+                        downloadNext();
+                    }, 2000); // 2 second delay between downloads
+                }
+            }
+        }
+        
+        // Start the download process
+        downloadNext();
+    }
+
+    // Add event listener for the new download button
+    document.getElementById('download-all-videos-btn').addEventListener('click', function() {
+        if (confirm('This will download all videos one by one. Continue?')) {
+            downloadAllVideosDirectly();
+        }
+    });
+</script>
+{% endblock %}
