@@ -14,6 +14,22 @@
                 </div>
                 <p id="progress-text">0%</p>
                 <p id="current-file"></p>
+                <div id="playlist-info-progress" class="playlist-progress" style="display: none;">
+                    <div class="progress-steps">
+                        <div class="progress-step active" id="step-1">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Getting Playlist Info</span>
+                        </div>
+                        <div class="progress-step" id="step-2">
+                            <i class="fas fa-circle"></i>
+                            <span>Processing Videos</span>
+                        </div>
+                        <div class="progress-step" id="step-3">
+                            <i class="fas fa-circle"></i>
+                            <span>Preparing Downloads</span>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <div class="download-info">
@@ -92,6 +108,17 @@
                 return response.json();
             })
             .then(data => {
+                // Show playlist progress during initialization
+                const playlistProgress = document.getElementById('playlist-info-progress');
+                if (data.status === 'starting' || data.status === 'getting_info') {
+                    playlistProgress.style.display = 'block';
+                } else {
+                    playlistProgress.style.display = 'none';
+                }
+                
+                // Update progress steps based on status
+                updateProgressSteps(data.status);
+                
                 // Update status text
                 const statusElement = document.getElementById('status-text');
                 const statusText = getStatusText(data.status);
@@ -155,7 +182,7 @@
             })
             .catch(error => {
                 console.error('Error fetching status:', error);
-                setTimeout(updateStatus, 5000); // Retry after 5 seconds
+                setTimeout(updateStatus, 5000);
             });
     }
     
@@ -401,5 +428,33 @@
             downloadAllVideosDirectly();
         }
     });
+
+    function updateProgressSteps(status) {
+        const steps = {
+            'starting': 1,
+            'getting_info': 1,
+            'processing': 2,
+            'ready': 3
+        };
+        
+        const currentStep = steps[status] || 0;
+        
+        // Update step indicators
+        for (let i = 1; i <= 3; i++) {
+            const step = document.getElementById(`step-${i}`);
+            if (i < currentStep) {
+                step.classList.add('completed');
+                step.classList.remove('active');
+                step.querySelector('i').className = 'fas fa-check-circle';
+            } else if (i === currentStep) {
+                step.classList.add('active');
+                step.classList.remove('completed');
+                step.querySelector('i').className = 'fas fa-spinner fa-spin';
+            } else {
+                step.classList.remove('active', 'completed');
+                step.querySelector('i').className = 'fas fa-circle';
+            }
+        }
+    }
 </script>
 {% endblock %}
